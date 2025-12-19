@@ -19,20 +19,29 @@ priority_list = ["조선일보", "중앙일보", "동아일보", "한겨레", "�
 
 
 def get_news_data():
-    # 브라우저 설정 (웹 서버 환경을 위한 필수 설정)
+    # 브라우저 옵션 설정
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # 서버에서는 화면을 띄울 수 없으므로 필수
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    # 서버 환경(리눅스)에서 크롬 실행 파일 위치를 직접 지정해주는 설정
+    # (packages.txt를 통해 설치된 경로입니다)
+    chrome_options.binary_location = "/usr/bin/chromium"
+
+    # 드라이버 경로 지정 및 실행
+    # 서버에서는 서비스 객체에 경로를 명시하는 것이 훨씬 안정적입니다.
+    service = Service("/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=chrome_options)
 
     try:
         url = "https://news.naver.com/newspaper/home?viewType=pc"
         driver.get(url)
         wait = WebDriverWait(driver, 15)
-        cards = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "offc_item")))
 
+        # 데이터 수집 (기존과 동일)
+        cards = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "offc_item")))
         collected_news = []
         for card in cards:
             try:
@@ -42,7 +51,7 @@ def get_news_data():
             except:
                 continue
 
-        # 정렬 로직
+        # 정렬 로직 (기존과 동일)
         priority_group = sorted([item for item in collected_news if item['name'] in priority_list],
                                 key=lambda x: priority_list.index(x['name']))
         others_group = sorted([item for item in collected_news if item['name'] not in priority_list],
@@ -50,9 +59,11 @@ def get_news_data():
 
         return priority_group + others_group
 
+    except Exception as e:
+        st.error(f"스크래핑 중 오류 발생: {e}")
+        return []
     finally:
         driver.quit()
-
 
 # 실행 버튼
 if st.button("뉴스 수집 시작"):
