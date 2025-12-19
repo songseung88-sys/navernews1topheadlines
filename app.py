@@ -9,9 +9,15 @@ from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime
 import time
 
-# 1. 웹 앱 인터페이스 설정
+# 1. 웹 앱 인터페이스 및 세션 설정
 st.set_page_config(page_title="네이버 뉴스 1면 스크래퍼", page_icon="📰", layout="wide")
 st.title("📰 네이버 뉴스 1면 제목 수집기")
+
+# 세션 상태 초기화 (데이터를 기억하기 위한 저장소 생성)
+if 'news_list' not in st.session_state:
+    st.session_state.news_list = []
+if 'last_scraped_date' not in st.session_state:
+    st.session_state.last_scraped_date = ""
 
 # 우선순위 리스트
 priority_list = ["조선일보", "중앙일보", "동아일보", "한겨레", "경향신문", "한국일보", "세계일보", "문화일보", "매일경제", "한국경제"]
@@ -38,12 +44,8 @@ def get_news_data():
         collected_news = []
         for card in cards:
             try:
-                # 매체명과 제목 추출
                 media_name = card.find_element(By.CLASS_NAME, "offc_logo_text").text.strip()
                 headline = card.find_element(By.CLASS_NAME, "title").text.strip()
-                
-                # 기사 링크 추출 (신문사별 지면 보기 링크)
-                # 'offc_ct_wraplink' 클래스를 가진 a 태그의 href 속성을 가져옵니다.
                 link = card.find_element(By.CLASS_NAME, "offc_ct_wraplink").get_attribute("href")
                 
                 collected_news.append({
@@ -64,41 +66,43 @@ def get_news_data():
     finally:
         driver.quit()
 
-# --- 실행 부분 ---
+# --- 실행 버튼 부분 ---
 if st.button("뉴스 수집 시작"):
     with st.spinner("데이터를 가져오는 중입니다..."):
-        final_list = get_news_data()
-        
-        if final_list:
-            now = datetime.now()
-            today_title = now.strftime("%Y.%m.%d.")
-            
-            # 1. 파일 저장용 텍스트 미리 생성 (링크 포함)
-            result_text = f"{today_title} 주요 지면 매체 1면 제목 스크랩\n\n"
-            for news in final_list:
-                result_text += f"[{news['name']}] {news['title']}\n"
-                result_text += f"링크: {news['link']}\n\n"
-
-            # 2. 다운로드 버튼 상단 배치
-            st.success(f"{len(final_list)}개 매체의 제목과 링크를 수집했습니다.")
-            st.download_button(
-                label="📁 메모장 파일(.txt)로 다운로드",
-                data=result_text,
-                file_name=f"naver_news_{now.strftime('%Y%m%d')}.txt",
-                mime="text/plain"
-            )
-            
-            st.divider()
-            
-            # 3. 결과 본문 출력 (브라우저 전체 스크롤 이용)
-            st.subheader(f"📍 {today_title} 수집 결과")
-            
-            for news in final_list:
-                # 매체명과 제목 출력
-                st.markdown(f"### **[{news['name']}]** {news['title']}")
-                # 링크 출력 (클릭 가능한 파란색 링크 형태)
-                st.markdown(f"[기사 지면 바로가기]({news['link']})")
-                st.write("") # 간격 추가
-                
+        results = get_news_data()
+        if results:
+            # 수집된 데이터를 세션 상태에 저장 (페이지가 다시 실행되어도 유지됨)
+            st.session_state.news_list = results
+            st.session_state.last_scraped_date = datetime.now().strftime("%Y.%m.%d.")
+            st.success(f"{len(results)}개 매체를 수집했습니다!")
         else:
-            st.error("데이터 수집에 실패했습니다. 잠시 후 다시 시도해 주세요.")
+            st.error("데이터 수집에 실패했습니다.")
+
+# --- 결과 출력 부분 (세션 상태에 데이터가 있을 때만 표시) ---
+if st.session_state.news_list:
+    now = datetime.now()
+    today_title = st.session_state.last_scraped_date
+    
+    # 1. 다운로드용 텍스트 생성
+    result_text = f"{today_title} 주요 지면 매체 1면 제목 스크랩\n\n"
+    for news in st.session_state.news_list:
+        result_text += f"[{news['name']}] {news['title']}\n"
+        result_text += f"링크: {news['link']}\n\n"
+
+    # 2. 다운로드 버튼 (결과 상단에 배치)
+    st.download_button(
+        label="📁 메모장 파일(.txt)로 다운로드",
+        data=result_text,
+        file_name=f"naver_news_{now.strftime('%Y%m%d')}.txt",
+        mime="text/plain"
+    )
+    
+    st.divider()
+    
+    # 3. 본문 출력
+    st.subheader(f"📍 {today_title} 수집 결과")
+    for news in st.session_state.news_list:
+        st.markdown(f"### **[{news['name']}]** {news['title']}")
+        # 요청하신 문구 수정: 지면보기 바로가기
+        st.markdown(f"[지면보기 바로가기]({news['link']})")
+        st.write("")
