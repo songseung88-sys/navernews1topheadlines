@@ -13,7 +13,7 @@ import time
 st.set_page_config(page_title="네이버 뉴스 1면 스크래퍼", page_icon="📰", layout="wide")
 st.title("📰 네이버 뉴스 1면 제목 수집기")
 
-# 세션 상태 초기화 (데이터를 기억하기 위한 저장소 생성)
+# 세션 상태 초기화
 if 'news_list' not in st.session_state:
     st.session_state.news_list = []
 if 'last_scraped_date' not in st.session_state:
@@ -71,25 +71,23 @@ if st.button("뉴스 수집 시작"):
     with st.spinner("데이터를 가져오는 중입니다..."):
         results = get_news_data()
         if results:
-            # 수집된 데이터를 세션 상태에 저장 (페이지가 다시 실행되어도 유지됨)
             st.session_state.news_list = results
             st.session_state.last_scraped_date = datetime.now().strftime("%Y.%m.%d.")
             st.success(f"{len(results)}개 매체를 수집했습니다!")
         else:
             st.error("데이터 수집에 실패했습니다.")
 
-# --- 결과 출력 부분 (세션 상태에 데이터가 있을 때만 표시) ---
+# --- 결과 출력 및 다운로드 부분 ---
 if st.session_state.news_list:
     now = datetime.now()
     today_title = st.session_state.last_scraped_date
     
-    # 1. 다운로드용 텍스트 생성
+    # 1. 다운로드용 텍스트 생성 (여기에서 링크 부분을 제거했습니다)
     result_text = f"{today_title} 주요 지면 매체 1면 제목 스크랩\n\n"
     for news in st.session_state.news_list:
-        result_text += f"[{news['name']}] {news['title']}\n"
-        result_text += f"링크: {news['link']}\n\n"
+        result_text += f"[{news['name']}] {news['title']}\n\n" # 제목만 포함하고 한 줄 띄움
 
-    # 2. 다운로드 버튼 (결과 상단에 배치)
+    # 2. 다운로드 버튼
     st.download_button(
         label="📁 메모장 파일(.txt)로 다운로드",
         data=result_text,
@@ -99,10 +97,9 @@ if st.session_state.news_list:
     
     st.divider()
     
-    # 3. 본문 출력
+    # 3. 웹 화면 본문 출력 (화면에서는 링크가 계속 보입니다)
     st.subheader(f"📍 {today_title} 수집 결과")
     for news in st.session_state.news_list:
         st.markdown(f"### **[{news['name']}]** {news['title']}")
-        # 요청하신 문구 수정: 지면보기 바로가기
         st.markdown(f"[지면보기 바로가기]({news['link']})")
         st.write("")
