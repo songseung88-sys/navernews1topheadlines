@@ -5,7 +5,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 from datetime import datetime
 import time
 
@@ -103,3 +103,4 @@ if st.session_state.news_list:
         st.markdown(f"### **[{news['name']}]** {news['title']}")
         st.markdown(f"[지면보기 바로가기]({news['link']})")
         st.write("")
+
